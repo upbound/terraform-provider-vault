@@ -1,5 +1,9 @@
 ## Unreleased
 
+BUG FIXES:
+
+* `provider`: Respect boolean provider configuration fields when `GetRawConfig()` is null. Without a terraform plan/apply cycle there is no raw config to read, so `skip_child_token`, `skip_tls_verify` and `skip_get_vault_version` were silently ignored and the provider always used their defaults. `GetOkExists` is now used to tell an unset field apart from one set to `false`, and the environment variable fallback applies on this path too. ([upbound/provider-vault#122](https://github.com/upbound/provider-vault/issues/122))
+
 ## 5.9.0 (April 22, 2026)
 
 BREAKING CHANGES:

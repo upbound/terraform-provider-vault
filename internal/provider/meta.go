@@ -682,6 +682,23 @@ func GetResourceDataBool(d *schema.ResourceData, field, env string, dv bool) boo
 	// this value will be nil during PreChecks and Destroy operations in tests
 	// the testProvider in those cases is set up using default values
 	if rawConfig.IsNull() {
+		if v, exists := d.GetOkExists(field); exists { //nolint:staticcheck
+			if b, ok := v.(bool); ok {
+				return b
+			}
+		}
+
+		if env != "" {
+			if s := os.Getenv(env); s != "" {
+				ret, err := strconv.ParseBool(s)
+				if err == nil {
+					return ret
+				}
+				// swallow the error and return the default because that is the
+				// behavior we had when using SDKv2's schema.EnvDefaultFunc
+			}
+		}
+
 		return dv
 	}
 
