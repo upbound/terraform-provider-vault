@@ -818,3 +818,113 @@ func TestGetResourceDataInt(t *testing.T) {
 		})
 	}
 }
+
+// TestGetResourceDataBool tests the GetResourceDataBool function.
+//
+// schema.TestResourceDataRaw builds its ResourceData the same way
+// schema.Provider.Configure does, from a raw configuration map with no
+// RawConfig behind it. That is the shape upjet-based Crossplane providers
+// configure the provider in, so these cases cover both it and the PreCheck and
+// Destroy phases of the acceptance tests.
+//
+// Its subtests should not be run in parallel because it mutates the test runner's environment.
+func TestGetResourceDataBool(t *testing.T) {
+	tests := map[string]struct {
+		schemaData   map[string]interface{}
+		field        string
+		env          string
+		envValue     string
+		defaultValue bool
+		expected     bool
+	}{
+		"field: set true, default false": {
+			schemaData:   map[string]interface{}{"test_field": true},
+			field:        "test_field",
+			defaultValue: false,
+			expected:     true,
+		},
+		"field: set false, default true": {
+			schemaData:   map[string]interface{}{"test_field": false},
+			field:        "test_field",
+			defaultValue: true,
+			expected:     false,
+		},
+		"field: set true, overrides env": {
+			schemaData:   map[string]interface{}{"test_field": true},
+			field:        "test_field",
+			env:          "TEST_ENV_BOOL",
+			envValue:     "false",
+			defaultValue: false,
+			expected:     true,
+		},
+		"env: field missing, env true": {
+			schemaData:   map[string]interface{}{},
+			field:        "test_field",
+			env:          "TEST_ENV_BOOL",
+			envValue:     "true",
+			defaultValue: false,
+			expected:     true,
+		},
+		"env: field missing, env false": {
+			schemaData:   map[string]interface{}{},
+			field:        "test_field",
+			env:          "TEST_ENV_BOOL",
+			envValue:     "false",
+			defaultValue: true,
+			expected:     false,
+		},
+		"default: field missing, env unparseable": {
+			schemaData:   map[string]interface{}{},
+			field:        "test_field",
+			env:          "TEST_ENV_BOOL",
+			envValue:     "not-a-bool",
+			defaultValue: true,
+			expected:     true,
+		},
+		"default: field missing, env empty": {
+			schemaData:   map[string]interface{}{},
+			field:        "test_field",
+			env:          "TEST_ENV_BOOL",
+			envValue:     "",
+			defaultValue: true,
+			expected:     true,
+		},
+		"default: field missing, env missing, default true": {
+			schemaData:   map[string]interface{}{},
+			field:        "test_field",
+			defaultValue: true,
+			expected:     true,
+		},
+		"default: field missing, env missing, default false": {
+			schemaData:   map[string]interface{}{},
+			field:        "test_field",
+			defaultValue: false,
+			expected:     false,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if tt.env != "" {
+				t.Setenv(tt.env, tt.envValue)
+			}
+
+			testSchema := map[string]*schema.Schema{
+				"test_field": {
+					Type:     schema.TypeBool,
+					Optional: true,
+				},
+			}
+
+			d := schema.TestResourceDataRaw(t, testSchema, tt.schemaData)
+			if !d.GetRawConfig().IsNull() {
+				t.Fatal("expected a null RawConfig, which is what this test is about")
+			}
+
+			result := GetResourceDataBool(d, tt.field, tt.env, tt.defaultValue)
+			if result != tt.expected {
+				t.Errorf("GetResourceDataBool() got = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
